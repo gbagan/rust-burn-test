@@ -1,0 +1,13 @@
+[package]
+name = "rust-burn-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+burn = { version = "0.14", features = ["ndarray"] }
+burn-import = "0.14.0"
+lazy_static = "1.5.0"
+ndarray = "0.16.1"
+
+[build-dependencies]
+burn-import = "0.14.0"
