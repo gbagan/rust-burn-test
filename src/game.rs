@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 pub type Card = (u8, u8);
 
 #[derive(PartialEq, Eq, Debug)]
-enum State {
+pub enum State {
     Init,
     Discard,
     DiscardPick,
@@ -54,6 +54,9 @@ lazy_static! {
     ];
 }
 
+
+type CardLog = [[[f32; 48]; 8]; 16];
+
 pub struct RoundState {
     pub hand: [Vec<Card>; 2],
     pub pile: [Vec<Card>; 2],
@@ -63,18 +66,21 @@ pub struct RoundState {
     pub show: Vec<Card>,
     pub collect: Vec<Card>,
     
-    turn_16: usize,
-    dealer: usize,
-    koikoi: [[i32; 8]; 2],
+    pub turn_16: usize,
+    pub dealer: usize,
+    pub koikoi: [[i32; 8]; 2],
     winner: Option<usize>,
     exhausted: bool,
     turn_point: i32,
     
-    state: State,
+    pub state: State,
     wait_action: bool,
+
+    pub card_log: CardLog,
 }
 
 impl RoundState {
+    /*
     fn new(dealer: Option<usize>) -> Self {
         let hand = [vec!(), vec!()];
         let pile = [vec!(), vec!()];
@@ -116,6 +122,7 @@ impl RoundState {
             wait_action,
         } 
     }
+    */
 
     fn new_round(&mut self) {
 
@@ -123,10 +130,6 @@ impl RoundState {
 
     pub fn turn_player(&self) -> usize {
         if (self.turn_16+self.dealer)%2==0 {1} else {2}
-    }
-
-    fn idle_player(&self) -> usize {
-        3-self.turn_player()
     }
 
     fn turn_8(&self) -> usize {
@@ -153,7 +156,7 @@ impl RoundState {
         unseen
     }
 
-    fn pairing_card(&self) -> Vec<Card> {
+    pub fn pairing_cards(&self) -> Vec<Card> {
         self.field().iter().filter(|&&(c, _)| c == self.show[0].0).copied().collect()
     }
 
@@ -165,24 +168,24 @@ impl RoundState {
             .collect()
     }
 
-    fn round_point(&self, player: usize) -> Option<i32> {
+    fn round_points(&self, player: usize) -> Option<i32> {
         if self.winner.is_none() {
             None
         } else if self.exhausted {
             if (self.dealer==0) == (player == 0) { Some(1) } else { Some(-1) }
         } else if self.winner == Some(0) {
-            if player == 0 {Some(self.yaku_point(0))} else {Some(-self.yaku_point(0))}
+            if player == 0 {Some(self.yaku_points(0))} else {Some(-self.yaku_points(0))}
         } else {
-            if player == 1 {Some(self.yaku_point(1))} else {Some(-self.yaku_point(1))}    
+            if player == 1 {Some(self.yaku_points(1))} else {Some(-self.yaku_points(1))}    
         }
     }
 
-    fn koikoi_num(&self, player: usize) -> i32 {
+    pub fn koikoi_num(&self, player: usize) -> i32 {
         self.koikoi[player].iter().sum()
     }
 
 
-    fn yaku_point(&self, player: usize) -> i32 {
+    pub fn yaku_points(&self, player: usize) -> i32 {
         let mut point = 0; // todo
         /* 
              self.yaku(player)
@@ -243,7 +246,7 @@ impl RoundState {
     }
 
     fn _collect_card(&mut self, card: Card) {
-        let pairing_card = self.pairing_card();
+        let pairing_card = self.pairing_cards();
         let n = pairing_card.len();
         if pairing_card.is_empty() {
             self.collect = Vec::new();
@@ -277,13 +280,13 @@ impl RoundState {
         // assert_eq!(self.state, State::Discard);
         assert!(self.hand[turn_player].contains(&card));
 
-        self.turn_point = self.yaku_point(turn_player);
+        self.turn_point = self.yaku_points(turn_player);
         if let Some(ind) = self.hand[turn_player].iter().position(|&c| c == card) {
             self.show = vec![self.hand[turn_player].remove(ind)];
         }
 
         self.state = State::DiscardPick;
-        self.wait_action = self.pairing_card().len() == 2;
+        self.wait_action = self.pairing_cards().len() == 2;
 
         // Retourner l'état ou appeler __call__
         /*
@@ -321,7 +324,7 @@ impl RoundState {
         }
 
         self.state = State::DrawPick;
-        self.wait_action = self.pairing_card().len() == 2;
+        self.wait_action = self.pairing_cards().len() == 2;
     }
 
     fn draw_pick(&mut self, card: Card) {
@@ -331,14 +334,14 @@ impl RoundState {
         self._collect_card(card);
 
         self.state = State::KoiKoi;
-        self.wait_action = (self.yaku_point(self.turn_player()) > self.turn_point) && (self.turn_8() < 8);   
+        self.wait_action = (self.yaku_points(self.turn_player()) > self.turn_point) && (self.turn_8() < 8);   
     }
 
     fn claim_koikoi(&mut self, mut is_koikoi: Option<bool>) {
         let turn_player = self.turn_player();
         let turn_8 = self.turn_8();
         // Action
-        if self.yaku_point(turn_player) > self.turn_point && turn_8 == 8 {
+        if self.yaku_points(turn_player) > self.turn_point && turn_8 == 8 {
             is_koikoi = Some(false);
         }
         self.koikoi[turn_player][turn_8 as usize - 1] = if is_koikoi.unwrap_or(false) { 1 } else { 0 };
@@ -439,7 +442,7 @@ impl RoundState {
         for yaku in &op_yaku {
             println!("[{}, {}]", yaku.1, yaku.2);
         }
-        println!("Total Point: {}", self.yaku_point(op_view));
+        println!("Total Point: {}", self.yaku_points(op_view));
         println!("-----------------------------------------------");
         println!("Opponent's Pile:");
         println!("Light: {:?}", LIGHT.iter().filter(|c| op_pile.contains(c)).count());
@@ -469,7 +472,7 @@ impl RoundState {
         for yaku in &your_yaku {
             println!("[{}, {}]", yaku.1, yaku.2);
         }
-        println!("Total Point: {}", self.yaku_point(view));
+        println!("Total Point: {}", self.yaku_points(view));
         println!("-----------------------------------------------");
 
         if view != self.turn_player() {
@@ -483,7 +486,7 @@ impl RoundState {
             }
             State::DiscardPick => {
                 println!("Discard: {:?}", self.show[0]);
-                println!("Pairing: {:?}", self.pairing_card());
+                println!("Pairing: {:?}", self.pairing_cards());
                 if self.wait_action {
                     println!("Use discard_pick(card) to pick a pairing field card.");
                 } else {
@@ -495,7 +498,7 @@ impl RoundState {
             }
             State::DrawPick => {
                 println!("Draw: {:?}", self.show[0]);
-                println!("Pairing: {:?}", self.pairing_card());
+                println!("Pairing: {:?}", self.pairing_cards());
                 if self.wait_action {
                     println!("Use draw_pick(card) to pick a pairing field card.");
                 } else {
@@ -511,10 +514,22 @@ impl RoundState {
             }
             State::RoundOver => {
                 println!("Round Over");
-                println!("Round Point: You {:?}, Opponent {:?}", self.round_point(view), self.round_point(op_view));
+                println!("Round Point: You {:?}, Opponent {:?}", self.round_points(view), self.round_points(op_view));
             }
             _ => {}
         }
     }
+}
+
+pub struct GameState {
+    pub round_total: usize,
+    pub init_point: usize,
+    pub init_dealer: usize,        
+    pub player_name: usize,
+    pub round_state: RoundState,
+    pub round: usize,
+    pub points: [usize; 2], 
+    pub game_over: bool,
+    pub winner: Option<usize>
 }
 

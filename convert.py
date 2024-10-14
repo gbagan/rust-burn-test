@@ -4,7 +4,7 @@ from safetensors import safe_open
 d_model=256
 
 tensors = {}
-with safe_open("tensors/pick_sl.safetensors", framework="pt", device=0) as f:
+with safe_open("tensors/pick_sl.safetensors", framework="pt", device="cpu") as f:
     for k in f.keys():
         k2 = k
         k2=k.replace('norm1', 'norm_1')
