@@ -63,6 +63,8 @@ pub struct RoundState {
     pub field_slot: Vec<Card>,
     pub stock: Vec<Card>,
     
+    pub init_board: Vec<Card>,
+
     pub show: Vec<Card>,
     pub collect: Vec<Card>,
     

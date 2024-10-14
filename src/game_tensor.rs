@@ -137,6 +137,7 @@ pub fn suit_array() -> Array2<f32> {
 fn init_position_array(state: &RoundState) -> Array2<f32> {
     let turn_player = state.turn_player();
     let cards_in_my_hand = card_to_multi_hot(&state.hand[turn_player]);
+    let cards_in_board = card_to_multi_hot(&state.init_board);
     //let cards_in_board = card_to_multi_hot(self.log['basic']['initBoard'])
     let unseen_cards = card_to_multi_hot(&state.unseen_cards(turn_player));
     // todo
